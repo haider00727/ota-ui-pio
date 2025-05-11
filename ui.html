@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Targeted OTA Config</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f2f2f2; }
+    h1 { margin-bottom: 1rem; }
+    .mac-list { margin: 1rem 0; }
+    input, button, textarea {
+      padding: 0.5rem; margin: 0.25rem; font-size: 1rem;
+    }
+    .mac-row { display: flex; align-items: center; margin-bottom: 0.5rem; }
+    .mac-row input { flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>OTA Targeted Devices Editor</h1>
+
+  <label>
+    <input type="checkbox" id="updateAllCheckbox" />
+    Update All Devices
+  </label>
+
+  <div class="mac-list" id="macList"></div>
+
+  <button onclick="addMac()">➕ Add MAC</button>
+  <button onclick="downloadJSON()">💾 Download JSON</button>
+
+  <script>
+    const jsonURL = 'http://devtestego.oss-me-central-1.aliyuncs.com/firmware_targeted.json';
+
+    async function loadJSON() {
+      try {
+        const res = await fetch(jsonURL);
+        const data = await res.json();
+        document.getElementById('updateAllCheckbox').checked = data.update_all;
+        populateMacs(data.target_ids || []);
+      } catch (err) {
+        console.error("Failed to load JSON:", err);
+      }
+    }
+
+    function populateMacs(macs) {
+      const container = document.getElementById('macList');
+      container.innerHTML = '';
+      macs.forEach(mac => {
+        const row = document.createElement('div');
+        row.className = 'mac-row';
+
+        const input = document.createElement('input');
+        input.value = mac;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '❌';
+        removeBtn.onclick = () => row.remove();
+
+        row.appendChild(input);
+        row.appendChild(removeBtn);
+        container.appendChild(row);
+      });
+    }
+
+    function addMac() {
+      const container = document.getElementById('macList');
+      const row = document.createElement('div');
+      row.className = 'mac-row';
+
+      const input = document.createElement('input');
+      input.placeholder = 'AA:BB:CC:DD:EE:FF';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '❌';
+      removeBtn.onclick = () => row.remove();
+
+      row.appendChild(input);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    }
+
+    function downloadJSON() {
+      const updateAll = document.getElementById('updateAllCheckbox').checked;
+      const inputs = document.querySelectorAll('.mac-row input');
+      const macs = Array.from(inputs)
+        .map(i => i.value.trim().toUpperCase())
+        .filter(mac => mac.length > 0);
+
+      const result = {
+        update_all: updateAll,
+        target_ids: macs
+      };
+
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'firmware_targeted.json';
+      a.click();
+    }
+
+    loadJSON();
+  </script>
+</body>
+</html>
