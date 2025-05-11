@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Edit OTA Targeted Devices</title>
+  <title>ESP32 OTA Target Editor</title>
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f8f9fa; }
     h1 { margin-bottom: 1rem; }
     .mac-row { display: flex; align-items: center; margin: 0.3rem 0; }
     .mac-row input { flex: 1; padding: 0.5rem; margin-right: 0.5rem; }
-    button { margin: 0.5rem 0.2rem; padding: 0.5rem 1rem; }
+    button { margin: 0.5rem 0.2rem; padding: 0.5rem 1rem; cursor: pointer; }
+    #statusMsg { margin-top: 1rem; color: green; }
   </style>
 </head>
 <body>
-  <h1>OTA Targeted Devices Editor</h1>
+  <h1>ESP32 OTA Target Editor</h1>
+
+  <p><strong>Current Firmware Version:</strong> <span id="firmwareVersion">Loading...</span></p>
 
   <label>
     <input type="checkbox" id="updateAllCheckbox" />
@@ -29,17 +32,29 @@
   <p id="statusMsg"></p>
 
   <script>
-    const jsonURL = 'https://devtestego.oss-me-central-1.aliyuncs.com/firmware_targeted.json';
+    const firmwareInfoURL = 'http://devtestego.oss-me-central-1.aliyuncs.com/firmware.json';
+    const targetedJsonURL = 'http://devtestego.oss-me-central-1.aliyuncs.com/firmware_targeted.json';
 
-    async function loadJSON() {
+    async function loadFirmwareVersion() {
       try {
-        const res = await fetch(jsonURL);
+        const res = await fetch(firmwareInfoURL);
+        const data = await res.json();
+        document.getElementById('firmwareVersion').innerText = data.version || 'Unknown';
+      } catch (err) {
+        console.error("Failed to load firmware.json:", err);
+        document.getElementById('firmwareVersion').innerText = 'Error loading';
+      }
+    }
+
+    async function loadTargetedJSON() {
+      try {
+        const res = await fetch(targetedJsonURL);
         const data = await res.json();
         document.getElementById('updateAllCheckbox').checked = data.update_all;
         populateMacs(data.target_ids || []);
       } catch (err) {
-        console.error("Failed to load JSON:", err);
-        document.getElementById("statusMsg").innerText = "Error loading JSON file.";
+        console.error("Failed to load targeted JSON:", err);
+        document.getElementById("statusMsg").innerText = "Error loading firmware_targeted.json";
       }
     }
 
@@ -95,7 +110,6 @@
 
     function downloadJSON() {
       const result = getCurrentData();
-
       const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
@@ -107,13 +121,10 @@
 
     async function uploadJSON() {
       const jsonData = getCurrentData();
-
       try {
-        const response = await fetch(jsonURL, {
+        const response = await fetch(targetedJsonURL, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(jsonData)
         });
 
@@ -128,7 +139,9 @@
       }
     }
 
-    loadJSON();
+    // Load data on page load
+    loadFirmwareVersion();
+    loadTargetedJSON();
   </script>
 </body>
 </html>
